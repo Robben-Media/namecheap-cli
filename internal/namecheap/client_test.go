@@ -74,10 +74,8 @@ func TestParseDomainCheckResponse(t *testing.T) {
   <Warnings/>
   <RequestedCommand>namecheap.domains.check</RequestedCommand>
   <CommandResponse Type="namecheap.domains.check">
-    <DomainCheckResult>
-      <DomainCheck Domain="available-domain.com" Available="true"/>
-      <DomainCheck Domain="google.com" Available="false"/>
-    </DomainCheckResult>
+    <DomainCheckResult Domain="available-domain.com" Available="true"/>
+    <DomainCheckResult Domain="google.com" Available="false"/>
   </CommandResponse>
 </ApiResponse>`
 
@@ -86,7 +84,7 @@ func TestParseDomainCheckResponse(t *testing.T) {
 		t.Fatalf("unmarshal XML: %v", err)
 	}
 
-	checks := resp.CommandResponse.DomainCheck.Domains
+	checks := resp.CommandResponse.DomainChecks
 	if len(checks) != 2 {
 		t.Fatalf("got %d checks, want 2", len(checks))
 	}

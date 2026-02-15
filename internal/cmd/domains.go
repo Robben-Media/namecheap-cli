@@ -75,10 +75,10 @@ func (cmd *DomainsCheckCmd) Run(ctx context.Context, flags *RootFlags) error {
 	}
 
 	if outfmt.IsJSON(ctx) {
-		return outfmt.WriteJSON(os.Stdout, resp.CommandResponse.DomainCheck.Domains)
+		return outfmt.WriteJSON(os.Stdout, resp.CommandResponse.DomainChecks)
 	}
 
-	for _, d := range resp.CommandResponse.DomainCheck.Domains {
+	for _, d := range resp.CommandResponse.DomainChecks {
 		status := "unavailable"
 		if d.Available == "true" {
 			status = "available"

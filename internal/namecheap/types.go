@@ -37,14 +37,14 @@ type ApiWarning struct {
 // CommandResponse contains the typed response data. Only one inner element
 // will be populated per call; the rest stay zero-valued.
 type CommandResponse struct {
-	Type         string            `xml:"Type,attr"`
-	DomainList   DomainListResult  `xml:"DomainGetListResult"`
-	DomainCheck  DomainCheckResult `xml:"DomainCheckResult"`
-	DomainInfo   DomainInfoResult  `xml:"DomainGetInfoResult"`
-	DNSHosts     DNSHostsResult    `xml:"DomainDNSGetHostsResult"`
-	DNSSetResult DNSSetResult      `xml:"DomainDNSSetHostsResult"`
-	SSLList      SSLListResult     `xml:"SSLListResult"`
-	Paging       Paging            `xml:"Paging"`
+	Type          string              `xml:"Type,attr"`
+	DomainList    DomainListResult    `xml:"DomainGetListResult"`
+	DomainChecks  []DomainCheckResult `xml:"DomainCheckResult"`
+	DomainInfo    DomainInfoResult    `xml:"DomainGetInfoResult"`
+	DNSHosts      DNSHostsResult      `xml:"DomainDNSGetHostsResult"`
+	DNSSetResult  DNSSetResult        `xml:"DomainDNSSetHostsResult"`
+	SSLList       SSLListResult       `xml:"SSLListResult"`
+	Paging        Paging              `xml:"Paging"`
 }
 
 // Paging contains pagination info.
@@ -74,13 +74,9 @@ type Domain struct {
 	WhoisGuard string `xml:"WhoisGuard,attr" json:"whois_guard"`
 }
 
-// DomainCheckResult holds domain availability check results.
+// DomainCheckResult represents a single domain availability check result.
+// The Namecheap API returns one <DomainCheckResult> element per domain checked.
 type DomainCheckResult struct {
-	Domains []DomainCheck `xml:"DomainCheck"`
-}
-
-// DomainCheck represents a single domain check result.
-type DomainCheck struct {
 	Domain    string `xml:"Domain,attr"    json:"domain"`
 	Available string `xml:"Available,attr" json:"available"`
 }
