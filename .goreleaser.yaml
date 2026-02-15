@@ -57,3 +57,5 @@ brews:
     homepage: "https://github.com/builtbyrobben/namecheap-cli"
     description: "Namecheap domain and DNS management CLI"
     license: "MIT"
+    test: |
+      system "#{bin}/namecheap-cli", "--version"
