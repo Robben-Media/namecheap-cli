@@ -15,7 +15,7 @@ var (
 type VersionCmd struct{}
 
 func (cmd *VersionCmd) Run(ctx context.Context) error {
-	fmt.Printf("placeholder-cli %s\n", VersionString())
+	fmt.Printf("namecheap-cli %s\n", VersionString())
 	fmt.Printf("  Commit: %s\n", commit)
 	fmt.Printf("  Built:  %s\n", date)
 	fmt.Printf("  OS:     %s/%s\n", runtime.GOOS, runtime.GOARCH)

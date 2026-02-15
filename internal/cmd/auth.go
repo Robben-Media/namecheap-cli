@@ -7,46 +7,31 @@ import (
 	"os"
 	"strings"
 
-	"github.com/builtbyrobben/cli-template/internal/outfmt"
-	"github.com/builtbyrobben/cli-template/internal/secrets"
 	"golang.org/x/term"
+
+	"github.com/builtbyrobben/namecheap-cli/internal/outfmt"
+	"github.com/builtbyrobben/namecheap-cli/internal/secrets"
 )
 
 type AuthCmd struct {
-	SetKey  AuthSetKeyCmd  `cmd:"" help:"Set API key (uses --stdin by default)"`
+	SetKey  AuthSetKeyCmd  `cmd:"" name:"set-key" help:"Set API key (uses --stdin by default)"`
+	SetUser AuthSetUserCmd `cmd:"" name:"set-user" help:"Set API username"`
+	SetIP   AuthSetIPCmd   `cmd:"" name:"set-ip" help:"Set client IP address"`
 	Status  AuthStatusCmd  `cmd:"" help:"Show authentication status"`
-	Remove  AuthRemoveCmd  `cmd:"" help:"Remove stored credentials"`
+	Remove  AuthRemoveCmd  `cmd:"" help:"Remove all stored credentials"`
 }
 
+// --- set-key ---
+
 type AuthSetKeyCmd struct {
-	Stdin bool `help:"Read API key from stdin (default: true)" default:"true"`
-	Key    string `arg:"" optional:"" help:"API key (discouraged; exposes in shell history)"`
+	Stdin bool   `help:"Read API key from stdin (default: true)" default:"true"`
+	Key   string `arg:"" optional:"" help:"API key (discouraged; exposes in shell history)"`
 }
 
 func (cmd *AuthSetKeyCmd) Run(ctx context.Context) error {
-	var apiKey string
-
-	// Priority: argument > stdin
-	if cmd.Key != "" {
-		// Warn about shell history exposure
-		fmt.Fprintln(os.Stderr, "Warning: passing keys as arguments exposes them in shell history. Use --stdin instead.")
-		apiKey = strings.TrimSpace(cmd.Key)
-	} else if term.IsTerminal(int(os.Stdin.Fd())) {
-		// Interactive prompt
-		fmt.Fprint(os.Stderr, "Enter API key: ")
-		byteKey, err := term.ReadPassword(int(os.Stdin.Fd()))
-		fmt.Fprintln(os.Stderr) // New line after password input
-		if err != nil {
-			return fmt.Errorf("read API key: %w", err)
-		}
-		apiKey = strings.TrimSpace(string(byteKey))
-	} else {
-		// Read from stdin (piped)
-		byteKey, err := io.ReadAll(os.Stdin)
-		if err != nil {
-			return fmt.Errorf("read API key from stdin: %w", err)
-		}
-		apiKey = strings.TrimSpace(string(byteKey))
+	apiKey, err := readSecret(cmd.Key, "Enter API key: ")
+	if err != nil {
+		return err
 	}
 
 	if apiKey == "" {
@@ -63,16 +48,74 @@ func (cmd *AuthSetKeyCmd) Run(ctx context.Context) error {
 	}
 
 	if outfmt.IsJSON(ctx) {
-		outfmt.WriteJSON(os.Stdout, map[string]string{
-			"status": "success",
+		return outfmt.WriteJSON(os.Stdout, map[string]string{
+			"status":  "success",
 			"message": "API key stored in keyring",
 		})
-	} else {
-		fmt.Fprintln(os.Stderr, "API key stored in keyring")
 	}
+
+	fmt.Fprintln(os.Stderr, "API key stored in keyring")
 
 	return nil
 }
+
+// --- set-user ---
+
+type AuthSetUserCmd struct {
+	Username string `arg:"" required:"" help:"Namecheap API username"`
+}
+
+func (cmd *AuthSetUserCmd) Run(ctx context.Context) error {
+	username := strings.TrimSpace(cmd.Username)
+	if username == "" {
+		return fmt.Errorf("username cannot be empty")
+	}
+
+	if err := secrets.SetSecret("api_user", []byte(username)); err != nil {
+		return fmt.Errorf("store username: %w", err)
+	}
+
+	if outfmt.IsJSON(ctx) {
+		return outfmt.WriteJSON(os.Stdout, map[string]string{
+			"status":  "success",
+			"message": "Username stored in keyring",
+		})
+	}
+
+	fmt.Fprintln(os.Stderr, "Username stored in keyring")
+
+	return nil
+}
+
+// --- set-ip ---
+
+type AuthSetIPCmd struct {
+	IP string `arg:"" required:"" help:"Client IP address for API access"`
+}
+
+func (cmd *AuthSetIPCmd) Run(ctx context.Context) error {
+	ip := strings.TrimSpace(cmd.IP)
+	if ip == "" {
+		return fmt.Errorf("IP address cannot be empty")
+	}
+
+	if err := secrets.SetSecret("client_ip", []byte(ip)); err != nil {
+		return fmt.Errorf("store client IP: %w", err)
+	}
+
+	if outfmt.IsJSON(ctx) {
+		return outfmt.WriteJSON(os.Stdout, map[string]string{
+			"status":  "success",
+			"message": "Client IP stored in keyring",
+		})
+	}
+
+	fmt.Fprintln(os.Stderr, "Client IP stored in keyring")
+
+	return nil
+}
+
+// --- status ---
 
 type AuthStatusCmd struct{}
 
@@ -82,49 +125,46 @@ func (cmd *AuthStatusCmd) Run(ctx context.Context) error {
 		return fmt.Errorf("open credential store: %w", err)
 	}
 
-	hasKey, err := store.HasKey()
-	if err != nil {
-		return fmt.Errorf("check API key: %w", err)
-	}
+	hasKey, _ := store.HasKey()
+	hasUser := hasSecret("api_user")
+	hasIP := hasSecret("client_ip")
 
-	// Check environment variable override
-	envKey := os.Getenv("PLACEHOLDER_CLI_API_KEY")
-	envOverride := envKey != ""
+	envKey := os.Getenv("NAMECHEAP_API_KEY")
+	envUser := os.Getenv("NAMECHEAP_USER")
+	envIP := os.Getenv("NAMECHEAP_CLIENT_IP")
 
 	status := map[string]any{
-		"has_key":        hasKey,
-		"env_override":   envOverride,
-		"storage_backend": "keyring",
-	}
-
-	if hasKey && !envOverride {
-		// Show redacted key
-		key, err := store.GetAPIKey()
-		if err == nil && len(key) > 8 {
-			status["key_redacted"] = key[:4] + "..." + key[len(key)-4:]
-		}
+		"api_key":   credStatus(hasKey, envKey != ""),
+		"api_user":  credStatus(hasUser, envUser != ""),
+		"client_ip": credStatus(hasIP, envIP != ""),
+		"storage":   "keyring",
 	}
 
 	if outfmt.IsJSON(ctx) {
 		return outfmt.WriteJSON(os.Stdout, status)
 	}
 
-	// Human-readable output
-	fmt.Fprintf(os.Stderr, "Storage: %s\n", status["storage_backend"])
-	if envOverride {
-		fmt.Fprintln(os.Stderr, "Status: Using PLACEHOLDER_CLI_API_KEY environment variable")
-	} else if hasKey {
-		fmt.Fprintln(os.Stderr, "Status: Authenticated")
-		if redacted, ok := status["key_redacted"].(string); ok {
-			fmt.Fprintf(os.Stderr, "Key: %s\n", redacted)
-		}
-	} else {
-		fmt.Fprintln(os.Stderr, "Status: Not authenticated")
-		fmt.Fprintln(os.Stderr, "Run: placeholder-cli auth set-key --stdin")
+	fmt.Fprintf(os.Stderr, "Storage: keyring\n\n")
+	printCredLine("API Key", hasKey, envKey != "", "NAMECHEAP_API_KEY", redactKey(store))
+	printCredLine("Username", hasUser, envUser != "", "NAMECHEAP_USER", readSecretValue("api_user"))
+	printCredLine("Client IP", hasIP, envIP != "", "NAMECHEAP_CLIENT_IP", readSecretValue("client_ip"))
+
+	if !hasKey && envKey == "" {
+		fmt.Fprintln(os.Stderr, "\nRun: namecheap-cli auth set-key --stdin")
+	}
+
+	if !hasUser && envUser == "" {
+		fmt.Fprintln(os.Stderr, "Run: namecheap-cli auth set-user <username>")
+	}
+
+	if !hasIP && envIP == "" {
+		fmt.Fprintln(os.Stderr, "Run: namecheap-cli auth set-ip <ip>")
 	}
 
 	return nil
 }
+
+// --- remove ---
 
 type AuthRemoveCmd struct{}
 
@@ -138,14 +178,96 @@ func (cmd *AuthRemoveCmd) Run(ctx context.Context) error {
 		return fmt.Errorf("remove API key: %w", err)
 	}
 
+	_ = secrets.DeleteSecret("api_user")
+	_ = secrets.DeleteSecret("client_ip")
+
 	if outfmt.IsJSON(ctx) {
-		outfmt.WriteJSON(os.Stdout, map[string]string{
-			"status": "success",
-			"message": "API key removed",
+		return outfmt.WriteJSON(os.Stdout, map[string]string{
+			"status":  "success",
+			"message": "All credentials removed",
 		})
-	} else {
-		fmt.Fprintln(os.Stderr, "API key removed")
 	}
 
+	fmt.Fprintln(os.Stderr, "All credentials removed")
+
 	return nil
+}
+
+// --- helpers ---
+
+func readSecret(argValue, prompt string) (string, error) {
+	if argValue != "" {
+		fmt.Fprintln(os.Stderr, "Warning: passing keys as arguments exposes them in shell history. Use --stdin instead.")
+		return strings.TrimSpace(argValue), nil
+	}
+
+	if term.IsTerminal(int(os.Stdin.Fd())) {
+		fmt.Fprint(os.Stderr, prompt)
+
+		byteKey, err := term.ReadPassword(int(os.Stdin.Fd()))
+		fmt.Fprintln(os.Stderr)
+
+		if err != nil {
+			return "", fmt.Errorf("read input: %w", err)
+		}
+
+		return strings.TrimSpace(string(byteKey)), nil
+	}
+
+	byteKey, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		return "", fmt.Errorf("read from stdin: %w", err)
+	}
+
+	return strings.TrimSpace(string(byteKey)), nil
+}
+
+func hasSecret(key string) bool {
+	val, err := secrets.GetSecret(key)
+	return err == nil && len(val) > 0
+}
+
+func readSecretValue(key string) string {
+	val, err := secrets.GetSecret(key)
+	if err != nil || len(val) == 0 {
+		return ""
+	}
+
+	return string(val)
+}
+
+func redactKey(store secrets.Store) string {
+	key, err := store.GetAPIKey()
+	if err != nil || len(key) < 8 {
+		return ""
+	}
+
+	return key[:4] + "..." + key[len(key)-4:]
+}
+
+func credStatus(stored, envOverride bool) string {
+	if envOverride {
+		return "env"
+	}
+
+	if stored {
+		return "stored"
+	}
+
+	return "missing"
+}
+
+func printCredLine(label string, stored, envOverride bool, envVar, value string) {
+	prefix := label + ":"
+
+	switch {
+	case envOverride:
+		fmt.Fprintf(os.Stderr, "%-10s Using %s environment variable\n", prefix, envVar)
+	case stored && value != "":
+		fmt.Fprintf(os.Stderr, "%-10s %s\n", prefix, value)
+	case stored:
+		fmt.Fprintf(os.Stderr, "%-10s Stored\n", prefix)
+	default:
+		fmt.Fprintf(os.Stderr, "%-10s Not configured\n", prefix)
+	}
 }
