@@ -42,6 +42,17 @@ func (cmd *DomainsListCmd) Run(ctx context.Context, flags *RootFlags) error {
 		})
 	}
 
+	if outfmt.IsPlain(ctx) {
+		headers := []string{"NAME", "EXPIRES", "AUTO_RENEW", "WHOIS_GUARD"}
+
+		var rows [][]string
+		for _, d := range resp.CommandResponse.DomainList.Domains {
+			rows = append(rows, []string{d.Name, d.Expires, d.AutoRenew, d.WhoisGuard})
+		}
+
+		return outfmt.WritePlain(os.Stdout, headers, rows)
+	}
+
 	domains := resp.CommandResponse.DomainList.Domains
 	if len(domains) == 0 {
 		fmt.Fprintln(os.Stderr, "No domains found")
@@ -78,6 +89,17 @@ func (cmd *DomainsCheckCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return outfmt.WriteJSON(os.Stdout, resp.CommandResponse.DomainChecks)
 	}
 
+	if outfmt.IsPlain(ctx) {
+		headers := []string{"DOMAIN", "AVAILABLE"}
+
+		var rows [][]string
+		for _, d := range resp.CommandResponse.DomainChecks {
+			rows = append(rows, []string{d.Domain, d.Available})
+		}
+
+		return outfmt.WritePlain(os.Stdout, headers, rows)
+	}
+
 	for _, d := range resp.CommandResponse.DomainChecks {
 		status := "unavailable"
 		if d.Available == "true" {
@@ -109,6 +131,13 @@ func (cmd *DomainsGetCmd) Run(ctx context.Context, flags *RootFlags) error {
 
 	if outfmt.IsJSON(ctx) {
 		return outfmt.WriteJSON(os.Stdout, info)
+	}
+
+	if outfmt.IsPlain(ctx) {
+		headers := []string{"DOMAIN", "STATUS", "OWNER", "CREATED", "EXPIRES", "DNS_TYPE"}
+		rows := [][]string{{info.DomainName, info.Status, info.OwnerName, info.DomainDetails.CreatedDate, info.DomainDetails.ExpiredDate, info.DNSDetails.ProviderType}}
+
+		return outfmt.WritePlain(os.Stdout, headers, rows)
 	}
 
 	fmt.Printf("Domain:     %s\n", info.DomainName)

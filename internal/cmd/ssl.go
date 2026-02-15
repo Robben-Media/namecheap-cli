@@ -33,6 +33,17 @@ func (cmd *SSLListCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return outfmt.WriteJSON(os.Stdout, certs)
 	}
 
+	if outfmt.IsPlain(ctx) {
+		headers := []string{"CERT_ID", "HOSTNAME", "TYPE", "STATUS", "EXPIRES"}
+
+		var rows [][]string
+		for _, c := range certs {
+			rows = append(rows, []string{c.CertificateID, c.HostName, c.SSLType, c.Status, c.ExpireDate})
+		}
+
+		return outfmt.WritePlain(os.Stdout, headers, rows)
+	}
+
 	if len(certs) == 0 {
 		fmt.Fprintln(os.Stderr, "No SSL certificates found")
 		return nil
