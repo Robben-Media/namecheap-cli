@@ -37,7 +37,7 @@ type CLI struct {
 type exitPanic struct{ code int }
 
 func Execute(args []string) (err error) {
-	parser, cli, err := newParser(helpDescription())
+	parser, cli, err := newParser("Namecheap CLI - Domain management and DNS operations")
 	if err != nil {
 		return err
 	}
@@ -74,7 +74,7 @@ func Execute(args []string) (err error) {
 	mode, err := outfmt.FromFlags(cli.JSON, cli.Plain)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, errfmt.Format(err))
-		return newUsageError(err)
+		return &ExitError{Code: 2, Err: err}
 	}
 
 	ctx := context.Background()
@@ -143,16 +143,4 @@ func newParser(description string) (*kong.Kong, *CLI, error) {
 		return nil, nil, err
 	}
 	return parser, cli, nil
-}
-
-func helpDescription() string {
-	return "Namecheap CLI - Domain management and DNS operations"
-}
-
-// newUsageError wraps errors in a way main() can map to exit code 2.
-func newUsageError(err error) error {
-	if err == nil {
-		return nil
-	}
-	return &ExitError{Code: 2, Err: err}
 }

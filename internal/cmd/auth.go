@@ -202,8 +202,13 @@ func (cmd *AuthRemoveCmd) Run(ctx context.Context) error {
 		return fmt.Errorf("remove API key: %w", err)
 	}
 
-	_ = secrets.DeleteSecret("api_user")
-	_ = secrets.DeleteSecret("client_ip")
+	if err := secrets.DeleteSecret("api_user"); err != nil {
+		return fmt.Errorf("remove username: %w", err)
+	}
+
+	if err := secrets.DeleteSecret("client_ip"); err != nil {
+		return fmt.Errorf("remove client IP: %w", err)
+	}
 
 	if outfmt.IsJSON(ctx) {
 		return outfmt.WriteJSON(os.Stdout, map[string]string{
