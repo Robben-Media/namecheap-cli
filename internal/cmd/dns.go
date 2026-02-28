@@ -37,6 +37,17 @@ func (cmd *DNSListCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return outfmt.WriteJSON(os.Stdout, hosts)
 	}
 
+	if outfmt.IsPlain(ctx) {
+		headers := []string{"NAME", "TYPE", "ADDRESS", "TTL"}
+
+		var rows [][]string
+		for _, h := range hosts.Hosts {
+			rows = append(rows, []string{h.Name, h.Type, h.Address, h.TTL})
+		}
+
+		return outfmt.WritePlain(os.Stdout, headers, rows)
+	}
+
 	if len(hosts.Hosts) == 0 {
 		fmt.Fprintf(os.Stderr, "No DNS records found for %s.%s\n", cmd.SLD, cmd.TLD)
 		return nil
@@ -82,6 +93,13 @@ func (cmd *DNSSetCmd) Run(ctx context.Context, flags *RootFlags) error {
 
 	if outfmt.IsJSON(ctx) {
 		return outfmt.WriteJSON(os.Stdout, result)
+	}
+
+	if outfmt.IsPlain(ctx) {
+		headers := []string{"DOMAIN", "SUCCESS"}
+		rows := [][]string{{result.Domain, result.IsSuccess}}
+
+		return outfmt.WritePlain(os.Stdout, headers, rows)
 	}
 
 	if result.IsSuccess == "true" {

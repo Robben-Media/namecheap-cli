@@ -54,6 +54,10 @@ func (cmd *AuthSetKeyCmd) Run(ctx context.Context) error {
 		})
 	}
 
+	if outfmt.IsPlain(ctx) {
+		return outfmt.WritePlain(os.Stdout, []string{"STATUS", "MESSAGE"}, [][]string{{"success", "API key stored in keyring"}})
+	}
+
 	fmt.Fprintln(os.Stderr, "API key stored in keyring")
 
 	return nil
@@ -82,6 +86,10 @@ func (cmd *AuthSetUserCmd) Run(ctx context.Context) error {
 		})
 	}
 
+	if outfmt.IsPlain(ctx) {
+		return outfmt.WritePlain(os.Stdout, []string{"STATUS", "MESSAGE"}, [][]string{{"success", "Username stored in keyring"}})
+	}
+
 	fmt.Fprintln(os.Stderr, "Username stored in keyring")
 
 	return nil
@@ -108,6 +116,10 @@ func (cmd *AuthSetIPCmd) Run(ctx context.Context) error {
 			"status":  "success",
 			"message": "Client IP stored in keyring",
 		})
+	}
+
+	if outfmt.IsPlain(ctx) {
+		return outfmt.WritePlain(os.Stdout, []string{"STATUS", "MESSAGE"}, [][]string{{"success", "Client IP stored in keyring"}})
 	}
 
 	fmt.Fprintln(os.Stderr, "Client IP stored in keyring")
@@ -144,7 +156,19 @@ func (cmd *AuthStatusCmd) Run(ctx context.Context) error {
 		return outfmt.WriteJSON(os.Stdout, status)
 	}
 
-	fmt.Fprintf(os.Stderr, "Storage: keyring\n\n")
+	if outfmt.IsPlain(ctx) {
+		headers := []string{"API_KEY", "API_USER", "CLIENT_IP", "STORAGE"}
+		rows := [][]string{{
+			credStatus(hasKey, envKey != ""),
+			credStatus(hasUser, envUser != ""),
+			credStatus(hasIP, envIP != ""),
+			"keyring",
+		}}
+
+		return outfmt.WritePlain(os.Stdout, headers, rows)
+	}
+
+	fmt.Fprintf(os.Stdout, "Storage: keyring\n\n")
 	printCredLine("API Key", hasKey, envKey != "", "NAMECHEAP_API_KEY", redactKey(store))
 	printCredLine("Username", hasUser, envUser != "", "NAMECHEAP_USER", readSecretValue("api_user"))
 	printCredLine("Client IP", hasIP, envIP != "", "NAMECHEAP_CLIENT_IP", readSecretValue("client_ip"))
@@ -178,14 +202,23 @@ func (cmd *AuthRemoveCmd) Run(ctx context.Context) error {
 		return fmt.Errorf("remove API key: %w", err)
 	}
 
-	_ = secrets.DeleteSecret("api_user")
-	_ = secrets.DeleteSecret("client_ip")
+	if err := secrets.DeleteSecret("api_user"); err != nil {
+		return fmt.Errorf("remove username: %w", err)
+	}
+
+	if err := secrets.DeleteSecret("client_ip"); err != nil {
+		return fmt.Errorf("remove client IP: %w", err)
+	}
 
 	if outfmt.IsJSON(ctx) {
 		return outfmt.WriteJSON(os.Stdout, map[string]string{
 			"status":  "success",
 			"message": "All credentials removed",
 		})
+	}
+
+	if outfmt.IsPlain(ctx) {
+		return outfmt.WritePlain(os.Stdout, []string{"STATUS", "MESSAGE"}, [][]string{{"success", "All credentials removed"}})
 	}
 
 	fmt.Fprintln(os.Stderr, "All credentials removed")
@@ -262,12 +295,12 @@ func printCredLine(label string, stored, envOverride bool, envVar, value string)
 
 	switch {
 	case envOverride:
-		fmt.Fprintf(os.Stderr, "%-10s Using %s environment variable\n", prefix, envVar)
+		fmt.Fprintf(os.Stdout, "%-10s Using %s environment variable\n", prefix, envVar)
 	case stored && value != "":
-		fmt.Fprintf(os.Stderr, "%-10s %s\n", prefix, value)
+		fmt.Fprintf(os.Stdout, "%-10s %s\n", prefix, value)
 	case stored:
-		fmt.Fprintf(os.Stderr, "%-10s Stored\n", prefix)
+		fmt.Fprintf(os.Stdout, "%-10s Stored\n", prefix)
 	default:
-		fmt.Fprintf(os.Stderr, "%-10s Not configured\n", prefix)
+		fmt.Fprintf(os.Stdout, "%-10s Not configured\n", prefix)
 	}
 }

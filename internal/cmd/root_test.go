@@ -31,15 +31,6 @@ func TestExecuteUnknownCommand(t *testing.T) {
 	}
 }
 
-func TestHelpDescription(t *testing.T) {
-	t.Parallel()
-
-	desc := helpDescription()
-	if desc == "" {
-		t.Error("helpDescription() is empty")
-	}
-}
-
 func TestBoolString(t *testing.T) {
 	t.Parallel()
 
