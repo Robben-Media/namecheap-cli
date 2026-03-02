@@ -42,7 +42,8 @@ type CommandResponse struct {
 	DomainChecks []DomainCheckResult `xml:"DomainCheckResult"`
 	DomainInfo   DomainInfoResult    `xml:"DomainGetInfoResult"`
 	DNSHosts     DNSHostsResult      `xml:"DomainDNSGetHostsResult"`
-	DNSSetResult DNSSetResult        `xml:"DomainDNSSetHostsResult"`
+	DNSSetResult       DNSSetResult       `xml:"DomainDNSSetHostsResult"`
+	DNSSetCustomResult DNSSetCustomResult `xml:"DomainDNSSetCustomResult"`
 	SSLList      SSLListResult       `xml:"SSLListResult"`
 	Paging       Paging              `xml:"Paging"`
 }
@@ -141,6 +142,12 @@ type DNSHost struct {
 type DNSSetResult struct {
 	Domain    string `xml:"Domain,attr"    json:"domain"`
 	IsSuccess string `xml:"IsSuccess,attr" json:"is_success"`
+}
+
+// DNSSetCustomResult holds the result of setting custom nameservers.
+type DNSSetCustomResult struct {
+	Domain  string `xml:"Domain,attr"  json:"domain"`
+	Updated string `xml:"Updated,attr" json:"updated"`
 }
 
 // DNSRecordInput is user-supplied JSON for setting DNS records.

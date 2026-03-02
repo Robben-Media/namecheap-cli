@@ -24,8 +24,9 @@ var (
 	errDomainRequired   = errors.New("domain name is required")
 	errSLDRequired      = errors.New("SLD is required")
 	errTLDRequired      = errors.New("TLD is required")
-	errAPIUnknownStatus = errors.New("API error: unknown status")
-	errAPIResponse      = errors.New("API error")
+	errNameserversRequired = errors.New("nameservers are required")
+	errAPIUnknownStatus    = errors.New("API error: unknown status")
+	errAPIResponse         = errors.New("API error")
 )
 
 // Client handles Namecheap XML API requests.
@@ -229,6 +230,27 @@ func (c *Client) DNSSetHosts(ctx context.Context, sld, tld string, records []DNS
 	}
 
 	return c.do(ctx, "namecheap.domains.dns.setHosts", params)
+}
+
+// DNSSetCustom sets custom nameservers for a domain.
+func (c *Client) DNSSetCustom(ctx context.Context, sld, tld, nameservers string) (*ApiResponse, error) {
+	if sld == "" {
+		return nil, errSLDRequired
+	}
+
+	if tld == "" {
+		return nil, errTLDRequired
+	}
+
+	if nameservers == "" {
+		return nil, errNameserversRequired
+	}
+
+	return c.do(ctx, "namecheap.domains.dns.setCustom", map[string]string{
+		"SLD":         sld,
+		"TLD":         tld,
+		"Nameservers": nameservers,
+	})
 }
 
 // --- SSL operations ---
