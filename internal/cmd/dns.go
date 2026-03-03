@@ -145,7 +145,7 @@ func (cmd *DNSSetCustomCmd) Run(ctx context.Context, flags *RootFlags) error {
 	if result.Updated == "true" {
 		fmt.Fprintf(os.Stderr, "Custom nameservers set for %s.%s\n", cmd.SLD, cmd.TLD)
 	} else {
-		fmt.Fprintf(os.Stderr, "Failed to set custom nameservers for %s.%s\n", cmd.SLD, cmd.TLD)
+		return fmt.Errorf("failed to set custom nameservers for %s.%s", cmd.SLD, cmd.TLD)
 	}
 
 	return nil

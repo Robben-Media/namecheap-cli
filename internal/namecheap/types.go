@@ -37,15 +37,15 @@ type ApiWarning struct {
 // CommandResponse contains the typed response data. Only one inner element
 // will be populated per call; the rest stay zero-valued.
 type CommandResponse struct {
-	Type         string              `xml:"Type,attr"`
-	DomainList   DomainListResult    `xml:"DomainGetListResult"`
-	DomainChecks []DomainCheckResult `xml:"DomainCheckResult"`
-	DomainInfo   DomainInfoResult    `xml:"DomainGetInfoResult"`
-	DNSHosts     DNSHostsResult      `xml:"DomainDNSGetHostsResult"`
-	DNSSetResult       DNSSetResult       `xml:"DomainDNSSetHostsResult"`
-	DNSSetCustomResult DNSSetCustomResult `xml:"DomainDNSSetCustomResult"`
-	SSLList      SSLListResult       `xml:"SSLListResult"`
-	Paging       Paging              `xml:"Paging"`
+	Type               string              `xml:"Type,attr"`
+	DomainList         DomainListResult    `xml:"DomainGetListResult"`
+	DomainChecks       []DomainCheckResult `xml:"DomainCheckResult"`
+	DomainInfo         DomainInfoResult    `xml:"DomainGetInfoResult"`
+	DNSHosts           DNSHostsResult      `xml:"DomainDNSGetHostsResult"`
+	DNSSetResult       DNSSetResult        `xml:"DomainDNSSetHostsResult"`
+	DNSSetCustomResult DNSSetCustomResult  `xml:"DomainDNSSetCustomResult"`
+	SSLList            SSLListResult       `xml:"SSLListResult"`
+	Paging             Paging              `xml:"Paging"`
 }
 
 // Paging contains pagination info.
