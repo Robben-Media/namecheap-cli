@@ -232,6 +232,55 @@ func TestParseDNSSetHostsResponse(t *testing.T) {
 	}
 }
 
+func TestParseDNSSetCustomResponse(t *testing.T) {
+	t.Parallel()
+
+	xmlData := `<?xml version="1.0" encoding="utf-8"?>
+<ApiResponse Status="OK" xmlns="http://api.namecheap.com/xml.response">
+  <Errors/>
+  <Warnings/>
+  <RequestedCommand>namecheap.domains.dns.setCustom</RequestedCommand>
+  <CommandResponse Type="namecheap.domains.dns.setCustom">
+    <DomainDNSSetCustomResult Domain="example.com" Updated="true"/>
+  </CommandResponse>
+</ApiResponse>`
+
+	var resp ApiResponse
+	if err := xml.Unmarshal([]byte(xmlData), &resp); err != nil {
+		t.Fatalf("unmarshal XML: %v", err)
+	}
+
+	result := resp.CommandResponse.DNSSetCustomResult
+	if result.Domain != "example.com" {
+		t.Errorf("Domain = %q, want example.com", result.Domain)
+	}
+
+	if result.Updated != "true" {
+		t.Errorf("Updated = %q, want true", result.Updated)
+	}
+}
+
+func TestDNSSetCustomValidation(t *testing.T) {
+	t.Parallel()
+
+	client := NewClient("key", "user", "1.2.3.4", false)
+
+	_, err := client.DNSSetCustom(context.Background(), "", "com", "ns1.example.com")
+	if !errors.Is(err, errSLDRequired) {
+		t.Errorf("error = %v, want %v", err, errSLDRequired)
+	}
+
+	_, err = client.DNSSetCustom(context.Background(), "example", "", "ns1.example.com")
+	if !errors.Is(err, errTLDRequired) {
+		t.Errorf("error = %v, want %v", err, errTLDRequired)
+	}
+
+	_, err = client.DNSSetCustom(context.Background(), "example", "com", "")
+	if !errors.Is(err, errNameserversRequired) {
+		t.Errorf("error = %v, want %v", err, errNameserversRequired)
+	}
+}
+
 func TestParseSSLListResponse(t *testing.T) {
 	t.Parallel()
 
