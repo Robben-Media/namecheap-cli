@@ -4,13 +4,6 @@ A CLI tool for the [Namecheap API](https://www.namecheap.com/support/api/intro/)
 
 ## Installation
 
-### Homebrew (macOS/Linux)
-
-```bash
-brew tap builtbyrobben/tap
-brew install namecheap-cli
-```
-
 ### Download Binary
 
 Download the latest release from [GitHub Releases](https://github.com/builtbyrobben/namecheap-cli/releases).
