@@ -45,10 +45,27 @@ jobs:
       - name: Build (CGO enabled for keyring)
         run: CGO_ENABLED=1 go build -o bin/namecheap-cli ./cmd/namecheap
 
-      - name: Test keyring
+      - name: Probe native macOS empty-keyring status
+        timeout-minutes: 1
+        shell: bash
+        env:
+          NAMECHEAP_CLI_KEYRING_BACKEND: keychain
+        run: |
+          ./bin/namecheap-cli --json auth status | python3 -c 'import json, sys; s = json.load(sys.stdin); assert all(s[k] == "missing" for k in ("api_key", "api_user", "client_ip"))'
+
+      - name: Test headless encrypted credential storage
+        timeout-minutes: 1
+        shell: bash
+        env:
+          NAMECHEAP_CLI_KEYRING_BACKEND: file
+          NAMECHEAP_CLI_KEYRING_PASS: ci-only-dummy-password
         run: |
           echo "testkey" | ./bin/namecheap-cli auth set-key --stdin
-          ./bin/namecheap-cli auth status
+          ./bin/namecheap-cli auth set-user ci-dummy-user
+          ./bin/namecheap-cli auth set-ip 192.0.2.1
+          ./bin/namecheap-cli --json auth status | python3 -c 'import json, sys; s = json.load(sys.stdin); assert all(s[k] == "stored" for k in ("api_key", "api_user", "client_ip"))'
+          ./bin/namecheap-cli auth remove
+          ./bin/namecheap-cli --json auth status | python3 -c 'import json, sys; s = json.load(sys.stdin); assert all(s[k] == "missing" for k in ("api_key", "api_user", "client_ip"))'
 
   build-windows:
     runs-on: windows-latest
